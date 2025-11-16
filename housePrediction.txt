@@ -1,0 +1,146 @@
+http://localhost:8888/notebooks/House_Prediction_model.ipynb
+
+import numpy as np
+import pandas as pd
+
+#read the file
+data=pd.read_csv("D:/housePrediction/House_Data(f).csv")
+#drop the irrelevant columns
+data.drop(columns=["area_type","availability","society"],inplace=True)
+
+#drop null values from dataset
+data.dropna(inplace=True)
+#count the number of house in each location
+data.location.value_counts()
+
+#remove the space from starting and ending of string of location using lambda function
+data['location']=data['location'].apply(lambda x:x.strip())
+data.location.value_counts()
+
+location_status=data.groupby("location")["location"].agg("count").sort_values(ascending=False)
+location_status
+
+#find out those location where have 10 or less no of houses
+location_less_than_10entries=location_status[location_status<=10]
+location_less_than_10entries
+
+#'location_less_than_10entries' er moddhe thakle segulo niye alada ekta 'others' locaton banabo
+data['location']=data['location'].apply(lambda x:'other' if x in location_less_than_10entries else x)
+data['location'].value_counts()
+
+data
+
+#for size column find out unique values
+data['size'].unique()
+
+#sudhu room number ta ber krbo using strip
+data['bedrooms']=data['size'].apply(lambda x:int(x.split(' ')[0]))
+data
+
+data.total_sqft.unique()
+
+def avg(sqft):
+    tokens=sqft.split('-')
+    if len(tokens)==2:
+        return (float(tokens[0])+float(tokens[1]))/2
+    else:
+        try:
+            return float(sqft)
+        except:
+            return None
+
+
+data['total_sqft']=data['total_sqft'].apply(avg)
+
+data['total_sqft'].unique()
+
+data.describe()
+
+#total_sqrt er count bath,balcony,price,bedrooms sb er theke besi hoye j6ilo tai null value remove korte hbe
+data.dropna(inplace=True)
+
+data.describe()
+
+data['sqft_per_bed']=data['total_sqft']/data['bedrooms']
+data.sqft_per_bed.describe()
+
+#sqrt_per_bed er min value onk kom tai
+data2=data[data['sqft_per_bed']>=300]
+data2
+
+data2['price_per_sqft']=round(data2['price']*100000/data2['total_sqft'],2)
+data2
+
+data2.price_per_sqft.describe()
+
+#'price_per_sqft' er min value 2000 er besi korar jonno
+data3=data2[data2['price_per_sqft']>=2000]
+
+data3
+
+data3.drop(columns=['size','sqft_per_bed','price_per_sqft'],axis=1,inplace=True)
+
+data3
+
+#'location' er k binary value te bojhar jonno
+from sklearn.preprocessing import OneHotEncoder,StandardScaler 
+
+#split the dataset
+from sklearn.model_selection import train_test_split
+
+#for linear regression
+from sklearn.linear_model import LinearRegression
+
+#to built pipeline
+from sklearn.pipeline import make_pipeline
+
+#OneHotEncoder er jonno lgbe
+from sklearn.compose import make_column_transformer
+
+#'location' column k binary te transform krchi using 'OneHotEncoder' jeta kaj hoche 'make_column_transformer' diye
+col_trans=make_column_transformer((OneHotEncoder(sparse_output=False),['location']),remainder='passthrough')
+
+lr=LinearRegression()
+
+scaler=StandardScaler()
+
+model= make_pipeline(col_trans,scaler,lr)
+
+
+
+
+#fit the training data into model
+model.fit(x_train,y_train)
+
+
+#find the score of the test data
+model.score(x_test, y_test)
+
+input=pd.DataFrame([['Electronic City Phase II',2000.0,3.0,2.0,3]],columns=['location','total_sqft','bath','balcony','bedrooms'])
+
+model.predict(input)
+
+#to make it as web application
+import pickle as pk
+
+pk.dump(model,open('House_prediction_model.pkl','wb'))
+
+data3.to_csv('Cleaned_data.csv')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
